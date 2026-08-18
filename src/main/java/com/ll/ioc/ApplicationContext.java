@@ -1,6 +1,7 @@
 package com.ll.ioc;
 
 import com.ll.domain.testPost.testPost.repository.TestPostRepository;
+import com.ll.domain.testPost.testPost.service.TestPostService;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -21,6 +22,7 @@ public class ApplicationContext {
 
         Object bean = switch (beanName) {
             case "testPostRepository" -> new TestPostRepository();
+            case "testPostService" -> new TestPostService(genBean("testPostRepository"));
             default -> null;
         };
 
