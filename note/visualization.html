@@ -1,0 +1,402 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>빈이 만들어지기까지</title>
+<style>
+  :root {
+    --font-sans: system-ui, -apple-system, "Segoe UI", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
+    --font-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+
+    /* page neutrals — cool off-white with a faint blueprint bias */
+    --dg-bg: #f6f8fb;
+    --dg-surface: #ffffff;
+    --dg-ink: #1a2230;
+    --dg-muted: #5b6575;
+    --dg-faint: #8a94a4;
+    --dg-accent: #2f5fe0;
+    --dg-border: #dde4ee;
+    --dg-hair: #e9edf4;
+
+    /* diagram ramps */
+    --r-gray-bg:#eef1f5; --r-gray-bd:#cbd3de; --r-gray-tx:#384153;
+    --r-blue-bg:#e2edff; --r-blue-bd:#a9c7fb; --r-blue-tx:#1c4bb0;
+    --r-green-bg:#ddf6e6; --r-green-bd:#93ddb0; --r-green-tx:#166b48;
+    --r-amber-bg:#fdf0d5; --r-amber-bd:#f0cf8e; --r-amber-tx:#8a5a1a;
+    --r-purple-bg:#ece7fb; --r-purple-bd:#c3b4f2; --r-purple-tx:#5a3bc4;
+    --r-red-bg:#fde4e4; --r-red-bd:#f2adad; --r-red-tx:#a52a2a;
+  }
+  :root:not([data-theme="light"]) {
+    @media (prefers-color-scheme: dark) {
+      --dg-bg:#0e1421; --dg-surface:#161d2b; --dg-ink:#e7ecf3; --dg-muted:#98a4b6; --dg-faint:#6b7889;
+      --dg-accent:#7aa2ff; --dg-border:#253044; --dg-hair:#1e2636;
+      --r-gray-bg:#212a38; --r-gray-bd:#3a4658; --r-gray-tx:#c6cfdd;
+      --r-blue-bg:#16294f; --r-blue-bd:#2f5296; --r-blue-tx:#adc8fb;
+      --r-green-bg:#0d3020; --r-green-bd:#1f6647; --r-green-tx:#8fe0b3;
+      --r-amber-bg:#3c2a10; --r-amber-bd:#7a5a24; --r-amber-tx:#f0cf8e;
+      --r-purple-bg:#241a4a; --r-purple-bd:#4a3a92; --r-purple-tx:#c3b4f2;
+      --r-red-bg:#3d1717; --r-red-bd:#7a3030; --r-red-tx:#f2adad;
+    }
+  }
+  :root[data-theme="dark"] {
+    --dg-bg:#0e1421; --dg-surface:#161d2b; --dg-ink:#e7ecf3; --dg-muted:#98a4b6; --dg-faint:#6b7889;
+    --dg-accent:#7aa2ff; --dg-border:#253044; --dg-hair:#1e2636;
+    --r-gray-bg:#212a38; --r-gray-bd:#3a4658; --r-gray-tx:#c6cfdd;
+    --r-blue-bg:#16294f; --r-blue-bd:#2f5296; --r-blue-tx:#adc8fb;
+    --r-green-bg:#0d3020; --r-green-bd:#1f6647; --r-green-tx:#8fe0b3;
+    --r-amber-bg:#3c2a10; --r-amber-bd:#7a5a24; --r-amber-tx:#f0cf8e;
+    --r-purple-bg:#241a4a; --r-purple-bd:#4a3a92; --r-purple-tx:#c3b4f2;
+    --r-red-bg:#3d1717; --r-red-bd:#7a3030; --r-red-tx:#f2adad;
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--dg-bg);
+    color: var(--dg-ink);
+    font-family: var(--font-sans);
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 860px; margin: 0 auto; padding: 72px 24px 96px; }
+
+  /* header */
+  .eyebrow { font-family: var(--font-mono); font-size: 12px; letter-spacing: .16em; text-transform: uppercase; color: var(--dg-accent); margin: 0 0 14px; }
+  h1 { font-size: clamp(30px, 5vw, 46px); font-weight: 800; letter-spacing: -.02em; line-height: 1.08; text-wrap: balance; margin: 0 0 18px; }
+  .lede { font-size: 18px; color: var(--dg-muted); max-width: 60ch; margin: 0 0 26px; }
+  .meta { display: flex; flex-wrap: wrap; gap: 8px 10px; font-family: var(--font-mono); font-size: 12.5px; }
+  .chip { border: 1px solid var(--dg-border); background: var(--dg-surface); color: var(--dg-muted); padding: 5px 11px; border-radius: 999px; }
+  .chip a { color: var(--dg-accent); text-decoration: none; }
+  .chip a:hover { text-decoration: underline; }
+
+  .rule { height: 1px; background: var(--dg-hair); border: 0; margin: 46px 0; }
+
+  /* principles strip */
+  .principles { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin: 30px 0 4px; }
+  .principle { border: 1px solid var(--dg-border); background: var(--dg-surface); border-radius: 12px; padding: 16px 16px 18px; }
+  .principle .n { font-family: var(--font-mono); font-size: 12px; color: var(--dg-accent); }
+  .principle h3 { margin: 6px 0 4px; font-size: 15px; letter-spacing: -.01em; }
+  .principle p { margin: 0; font-size: 13.5px; color: var(--dg-muted); line-height: 1.5; }
+  @media (max-width: 680px) { .principles { grid-template-columns: 1fr; } }
+
+  /* sections */
+  section { margin-top: 58px; }
+  .sec-head { display: flex; align-items: baseline; gap: 14px; margin-bottom: 6px; }
+  .sec-head .tag { font-family: var(--font-mono); font-size: 13px; color: var(--dg-accent); border: 1px solid var(--dg-border); border-radius: 8px; padding: 3px 9px; }
+  .sec-head h2 { font-size: 24px; letter-spacing: -.015em; margin: 0; }
+  .sec-sub { color: var(--dg-muted); margin: 8px 0 24px; font-size: 15px; max-width: 62ch; }
+
+  /* diagram plates */
+  figure.plate { margin: 0 0 26px; border: 1px solid var(--dg-border); background: var(--dg-surface); border-radius: 16px; overflow: hidden; }
+  .plate-scroll { overflow-x: auto; padding: 20px 20px 6px; }
+  .plate svg { display: block; width: 100%; height: auto; min-width: 460px; }
+  figcaption { padding: 4px 22px 20px; display: flex; gap: 12px; align-items: baseline; }
+  .fig-tag { flex: none; font-family: var(--font-mono); font-size: 11.5px; letter-spacing: .05em; text-transform: uppercase; color: #fff; background: var(--dg-accent); padding: 3px 9px; border-radius: 6px; }
+  :root[data-theme="dark"] .fig-tag, :root:not([data-theme="light"]) .fig-tag { color: #0e1421; }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .fig-tag { color:#0e1421; } }
+  figcaption p { margin: 0; font-size: 14px; color: var(--dg-muted); }
+  figcaption b { color: var(--dg-ink); font-weight: 600; }
+
+  footer { margin-top: 64px; padding-top: 22px; border-top: 1px solid var(--dg-hair); font-size: 13px; color: var(--dg-faint); font-family: var(--font-mono); }
+
+  /* ---- shared SVG diagram styles ---- */
+  svg text { font-family: var(--font-sans); }
+  svg .t  { font-size: 14px; font-weight: 600; fill: var(--dg-ink); }
+  svg .th { font-size: 14px; font-weight: 700; fill: var(--dg-ink); }
+  svg .ts { font-size: 12px; font-weight: 400; fill: var(--dg-muted); }
+  svg .c-gray rect   { fill: var(--r-gray-bg);   stroke: var(--r-gray-bd);   stroke-width: 1.5; }
+  svg .c-blue rect   { fill: var(--r-blue-bg);   stroke: var(--r-blue-bd);   stroke-width: 1.5; }
+  svg .c-green rect  { fill: var(--r-green-bg);  stroke: var(--r-green-bd);  stroke-width: 1.5; }
+  svg .c-amber rect  { fill: var(--r-amber-bg);  stroke: var(--r-amber-bd);  stroke-width: 1.5; }
+  svg .c-purple rect { fill: var(--r-purple-bg); stroke: var(--r-purple-bd); stroke-width: 1.5; }
+  svg .c-red rect    { fill: var(--r-red-bg);    stroke: var(--r-red-bd);    stroke-width: 1.5; }
+  svg .c-gray   .t, svg .c-gray   .ts, svg .c-gray   .th { fill: var(--r-gray-tx); }
+  svg .c-blue   .t, svg .c-blue   .ts, svg .c-blue   .th { fill: var(--r-blue-tx); }
+  svg .c-green  .t, svg .c-green  .ts, svg .c-green  .th { fill: var(--r-green-tx); }
+  svg .c-amber  .t, svg .c-amber  .ts, svg .c-amber  .th { fill: var(--r-amber-tx); }
+  svg .c-purple .t, svg .c-purple .ts, svg .c-purple .th { fill: var(--r-purple-tx); }
+  svg .c-red    .t, svg .c-red    .ts, svg .c-red    .th { fill: var(--r-red-tx); }
+  /* code-map cards */
+  svg .cardbg { fill: var(--dg-surface); stroke: var(--dg-border); stroke-width: 1.5; }
+  svg .code { font-family: var(--font-mono); font-size: 12px; fill: var(--dg-ink); }
+  svg .kw { fill: var(--dg-muted); }
+  svg .legln { stroke: var(--dg-hair); stroke-width: 1; }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <header>
+    <p class="eyebrow">스프링 IoC 컨테이너 클론 · 도해 모음</p>
+    <h1>빈이 만들어지기까지</h1>
+    <p class="lede">밑바닥부터 스프링의 IoC/DI 컨테이너를 구현하며 그린 아홉 장의 그림. 하드코딩에서 리플렉션까지, <b>“이름을 부르면 객체가 조립돼 나오는”</b> 과정을 단계별로 따라가고, 마지막엔 실전 앱 코드맵으로 마무리합니다.</p>
+    <div class="meta">
+      <span class="chip">1강 · 2강 · 3강</span>
+      <span class="chip">t1–t8 전체 통과</span>
+      <span class="chip"><a href="https://github.com/jomin4/prgrms-Springboot_loc_container">github.com/jomin4/prgrms-Springboot_loc_container</a></span>
+    </div>
+  </header>
+
+  <div class="principles">
+    <div class="principle"><div class="n">원리 01</div><h3>싱글톤 창고</h3><p>만든 빈을 <code>Map</code>에 넣어두고, 같은 이름엔 늘 같은 객체를 돌려준다.</p></div>
+    <div class="principle"><div class="n">원리 02</div><h3>재귀 조립</h3><p>재료가 필요하면 <code>genBean</code>으로 다시 요청 — 의존성 그래프가 저절로 조립된다.</p></div>
+    <div class="principle"><div class="n">원리 03</div><h3>리플렉션</h3><p>런타임에 설계도(클래스·메서드)를 읽어 코드를 대신 실행한다 = 스프링의 정체.</p></div>
+  </div>
+
+  <hr class="rule">
+
+  <!-- ===================== 1강 ===================== -->
+  <section>
+    <div class="sec-head"><span class="tag">1강 · v1</span><h2>하드코딩으로 빈 만들기</h2></div>
+    <p class="sec-sub">아직 마법은 없다. <code>switch</code>로 직접 <code>new</code> 하지만, 여기서 <b>싱글톤</b>과 <b>의존성 주입</b>의 뼈대가 세워진다.</p>
+
+    <figure class="plate">
+      <div class="plate-scroll">
+        <svg viewBox="0 0 680 350" role="img" xmlns="http://www.w3.org/2000/svg">
+          <title>1강에서 만들 3개의 빈과 의존 관계</title>
+          <defs><marker id="ah1" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#6b7280"/></marker></defs>
+          <line x1="230" y1="168" x2="286" y2="82" stroke="#6b7280" stroke-width="1.6" marker-end="url(#ah1)"/>
+          <line x1="230" y1="192" x2="286" y2="278" stroke="#6b7280" stroke-width="1.6" marker-end="url(#ah1)"/>
+          <line x1="392" y1="108" x2="412" y2="246" stroke="#6b7280" stroke-width="1.6" marker-end="url(#ah1)"/>
+          <text x="250" y="116" class="ts" text-anchor="middle">주입</text>
+          <text x="246" y="242" class="ts" text-anchor="middle">주입</text>
+          <text x="420" y="180" class="ts" text-anchor="start">주입</text>
+          <g class="c-green"><rect x="40" y="150" width="190" height="60" rx="8"/><text x="135" y="178" class="t" text-anchor="middle">TestPostRepository</text><text x="135" y="196" class="ts" text-anchor="middle">의존성 없음</text></g>
+          <g class="c-blue"><rect x="290" y="44" width="200" height="60" rx="8"/><text x="390" y="72" class="t" text-anchor="middle">TestPostService</text><text x="390" y="90" class="ts" text-anchor="middle">Repository 필요</text></g>
+          <g class="c-amber"><rect x="290" y="250" width="250" height="60" rx="8"/><text x="415" y="278" class="t" text-anchor="middle">TestFacadePostService</text><text x="415" y="296" class="ts" text-anchor="middle">Service + Repository 필요</text></g>
+        </svg>
+      </div>
+      <figcaption><span class="fig-tag">목표</span><p><b>1강의 지도.</b> 의존성 없는 Repository가 먼저, 그걸 필요로 하는 Service, 둘 다 받는 Facade. 화살표가 곧 “주입”이다.</p></figcaption>
+    </figure>
+
+    <figure class="plate">
+      <div class="plate-scroll">
+        <svg viewBox="0 0 680 470" role="img" xmlns="http://www.w3.org/2000/svg">
+          <title>genBean 호출 시 머릿속 흐름</title>
+          <defs><marker id="ah2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#6b7280"/></marker></defs>
+          <line x1="340" y1="76" x2="340" y2="108" stroke="#6b7280" stroke-width="1.6" marker-end="url(#ah2)"/>
+          <line x1="450" y1="135" x2="500" y2="206" stroke="#6b7280" stroke-width="1.6" marker-end="url(#ah2)"/>
+          <line x1="300" y1="162" x2="258" y2="206" stroke="#6b7280" stroke-width="1.6" marker-end="url(#ah2)"/>
+          <line x1="250" y1="262" x2="250" y2="288" stroke="#6b7280" stroke-width="1.6" marker-end="url(#ah2)"/>
+          <line x1="250" y1="342" x2="250" y2="368" stroke="#6b7280" stroke-width="1.6" marker-end="url(#ah2)"/>
+          <text x="475" y="178" class="ts" text-anchor="start">있음 · 재사용</text>
+          <text x="238" y="192" class="ts" text-anchor="middle">없음 · 최초 1회</text>
+          <g class="c-gray"><rect x="230" y="26" width="220" height="50" rx="8"/><text x="340" y="55" class="t" text-anchor="middle">genBean("이름") 호출</text></g>
+          <g class="c-purple"><rect x="230" y="110" width="220" height="52" rx="8"/><text x="340" y="141" class="t" text-anchor="middle">창고(beans)에 이름 있나?</text></g>
+          <g class="c-green"><rect x="420" y="208" width="230" height="60" rx="8"/><text x="535" y="233" class="t" text-anchor="middle">저장된 객체 그대로 반환</text><text x="535" y="252" class="ts" text-anchor="middle">= 항상 같은 객체 (싱글톤)</text></g>
+          <g class="c-blue"><rect x="130" y="208" width="240" height="52" rx="8"/><text x="250" y="239" class="t" text-anchor="middle">new 로 새 객체 생성</text></g>
+          <g class="c-blue"><rect x="130" y="288" width="240" height="52" rx="8"/><text x="250" y="319" class="t" text-anchor="middle">창고에 저장 (beans.put)</text></g>
+          <g class="c-amber"><rect x="130" y="368" width="240" height="52" rx="8"/><text x="250" y="399" class="t" text-anchor="middle">객체 반환</text></g>
+          <text x="340" y="450" class="th" text-anchor="middle">두 경로 모두 결국 "같은 하나의 객체"를 돌려준다 → 싱글톤</text>
+        </svg>
+      </div>
+      <figcaption><span class="fig-tag">사이클 1</span><p><b>싱글톤의 심장.</b> 창고에 있으면 재사용, 없으면 만들어 저장. <code>beans.put</code> 한 줄이 싱글톤을 만든다.</p></figcaption>
+    </figure>
+
+    <figure class="plate">
+      <div class="plate-scroll">
+        <svg viewBox="0 0 680 500" role="img" xmlns="http://www.w3.org/2000/svg">
+          <title>testPostService 생성 시 Repository를 genBean으로 먼저 조달</title>
+          <defs><marker id="ah3" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#6b7280"/></marker></defs>
+          <line x1="340" y1="72" x2="340" y2="100" stroke="#6b7280" stroke-width="1.6" marker-end="url(#ah3)"/>
+          <line x1="340" y1="148" x2="340" y2="176" stroke="#6b7280" stroke-width="1.6" marker-end="url(#ah3)"/>
+          <line x1="340" y1="228" x2="340" y2="256" stroke="#6b7280" stroke-width="1.6" marker-end="url(#ah3)"/>
+          <line x1="340" y1="308" x2="340" y2="336" stroke="#6b7280" stroke-width="1.6" marker-end="url(#ah3)"/>
+          <line x1="340" y1="384" x2="340" y2="412" stroke="#6b7280" stroke-width="1.6" marker-end="url(#ah3)"/>
+          <g class="c-gray"><rect x="180" y="24" width="320" height="48" rx="8"/><text x="340" y="53" class="t" text-anchor="middle">genBean("testPostService") 호출</text></g>
+          <g class="c-blue"><rect x="200" y="100" width="280" height="48" rx="8"/><text x="340" y="123" class="t" text-anchor="middle">창고에 없음</text><text x="340" y="141" class="ts" text-anchor="middle">→ 생성 시작, 재료가 필요하다</text></g>
+          <g class="c-purple"><rect x="120" y="176" width="440" height="52" rx="8"/><text x="340" y="199" class="t" text-anchor="middle">재귀 호출: genBean("testPostRepository")</text><text x="340" y="217" class="ts" text-anchor="middle">재료부터 컨테이너에게 다시 물어본다</text></g>
+          <g class="c-green"><rect x="170" y="256" width="340" height="52" rx="8"/><text x="340" y="279" class="t" text-anchor="middle">Repository 싱글톤 반환 @18b4aac2</text><text x="340" y="297" class="ts" text-anchor="middle">사이클1에서 만든 그 객체</text></g>
+          <g class="c-blue"><rect x="180" y="336" width="320" height="48" rx="8"/><text x="340" y="365" class="t" text-anchor="middle">new TestPostService(repo) 생성</text></g>
+          <g class="c-amber"><rect x="200" y="412" width="280" height="48" rx="8"/><text x="340" y="441" class="t" text-anchor="middle">창고에 저장 후 반환</text></g>
+          <text x="340" y="486" class="th" text-anchor="middle">주입된 repo == genBean("testPostRepository") → 같은 싱글톤 → t5 통과</text>
+        </svg>
+      </div>
+      <figcaption><span class="fig-tag">사이클 2</span><p><b>의존성 주입.</b> 재료를 <code>new</code>가 아니라 <code>genBean</code>으로 조달해야 창고의 싱글톤이 공유된다.</p></figcaption>
+    </figure>
+
+    <figure class="plate">
+      <div class="plate-scroll">
+        <svg viewBox="0 0 680 470" role="img" xmlns="http://www.w3.org/2000/svg">
+          <title>testFacadePostService 생성 시 두 재료를 조달해 주입</title>
+          <defs><marker id="ah4" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#6b7280"/></marker></defs>
+          <line x1="340" y1="70" x2="340" y2="98" stroke="#6b7280" stroke-width="1.6" marker-end="url(#ah4)"/>
+          <line x1="250" y1="150" x2="200" y2="192" stroke="#6b7280" stroke-width="1.6" marker-end="url(#ah4)"/>
+          <line x1="430" y1="150" x2="480" y2="192" stroke="#6b7280" stroke-width="1.6" marker-end="url(#ah4)"/>
+          <line x1="180" y1="256" x2="300" y2="300" stroke="#6b7280" stroke-width="1.6" marker-end="url(#ah4)"/>
+          <line x1="500" y1="256" x2="380" y2="300" stroke="#6b7280" stroke-width="1.6" marker-end="url(#ah4)"/>
+          <line x1="340" y1="352" x2="340" y2="380" stroke="#6b7280" stroke-width="1.6" marker-end="url(#ah4)"/>
+          <text x="205" y="180" class="ts" text-anchor="middle">재료 1</text>
+          <text x="478" y="180" class="ts" text-anchor="middle">재료 2</text>
+          <g class="c-gray"><rect x="150" y="22" width="380" height="48" rx="8"/><text x="340" y="51" class="t" text-anchor="middle">genBean("testFacadePostService")</text></g>
+          <g class="c-blue"><rect x="200" y="98" width="280" height="52" rx="8"/><text x="340" y="121" class="t" text-anchor="middle">창고에 없음 → 생성 시작</text><text x="340" y="139" class="ts" text-anchor="middle">재료 2개를 조달해야 한다</text></g>
+          <g class="c-purple"><rect x="60" y="192" width="290" height="64" rx="8"/><text x="205" y="217" class="t" text-anchor="middle">genBean("testPostService")</text><text x="205" y="236" class="ts" text-anchor="middle">repo를 안고 있는 싱글톤 @659e0bfd</text></g>
+          <g class="c-green"><rect x="368" y="192" width="290" height="64" rx="8"/><text x="513" y="217" class="t" text-anchor="middle">genBean("testPostRepository")</text><text x="513" y="236" class="ts" text-anchor="middle">싱글톤 @764c12b6</text></g>
+          <g class="c-blue"><rect x="150" y="300" width="380" height="52" rx="8"/><text x="340" y="331" class="t" text-anchor="middle">new TestFacadePostService(service, repo)</text></g>
+          <g class="c-amber"><rect x="220" y="380" width="240" height="46" rx="8"/><text x="340" y="409" class="t" text-anchor="middle">창고에 저장 후 반환</text></g>
+          <text x="340" y="454" class="th" text-anchor="middle">주입된 service·repo 모두 창고의 싱글톤과 동일 → t6 통과</text>
+        </svg>
+      </div>
+      <figcaption><span class="fig-tag">사이클 3</span><p><b>주입의 연쇄.</b> 재료가 둘로 늘어도 원리는 같다. 온 프로젝트에 Repository는 단 하나만 존재한다.</p></figcaption>
+    </figure>
+  </section>
+
+  <!-- ===================== 2강 ===================== -->
+  <section>
+    <div class="sec-head"><span class="tag">2강 · v2</span><h2>리플렉션으로 자동 생성</h2></div>
+    <p class="sec-sub"><code>switch</code>가 사라진다. 애노테이션만 붙이면 <b>스캔</b>이 클래스를 찾고, <b>리플렉션</b>이 생성자를 읽어 알아서 조립한다.</p>
+
+    <figure class="plate">
+      <div class="plate-scroll">
+        <svg viewBox="0 0 680 430" role="img" xmlns="http://www.w3.org/2000/svg">
+          <title>@Service·@Repository는 @Component로 메타 애노테이트되어 함께 스캔된다</title>
+          <defs><marker id="ah5" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#6b7280"/></marker></defs>
+          <g class="c-purple"><rect x="250" y="24" width="180" height="50" rx="8"/><text x="340" y="47" class="t" text-anchor="middle">@Component</text><text x="340" y="65" class="ts" text-anchor="middle">최상위 표식</text></g>
+          <line x1="300" y1="74" x2="150" y2="120" stroke="#6b7280" stroke-width="1.6" marker-end="url(#ah5)"/>
+          <line x1="340" y1="74" x2="340" y2="120" stroke="#6b7280" stroke-width="1.6" marker-end="url(#ah5)"/>
+          <line x1="380" y1="74" x2="540" y2="120" stroke="#6b7280" stroke-width="1.6" marker-end="url(#ah5)"/>
+          <text x="215" y="104" class="ts" text-anchor="middle">@Component 붙음</text>
+          <g class="c-blue"><rect x="40" y="122" width="180" height="46" rx="8"/><text x="130" y="150" class="t" text-anchor="middle">@Service</text></g>
+          <g class="c-blue"><rect x="250" y="122" width="180" height="46" rx="8"/><text x="340" y="150" class="t" text-anchor="middle">@Repository</text></g>
+          <g class="c-blue"><rect x="460" y="122" width="180" height="46" rx="8"/><text x="550" y="150" class="t" text-anchor="middle">@Configuration</text></g>
+          <line x1="130" y1="168" x2="130" y2="210" stroke="#6b7280" stroke-width="1.6" marker-end="url(#ah5)"/>
+          <line x1="340" y1="168" x2="340" y2="210" stroke="#6b7280" stroke-width="1.6" marker-end="url(#ah5)"/>
+          <g class="c-green"><rect x="30" y="212" width="200" height="46" rx="8"/><text x="130" y="240" class="t" text-anchor="middle">TestPostService</text></g>
+          <g class="c-green"><rect x="240" y="212" width="200" height="46" rx="8"/><text x="340" y="240" class="t" text-anchor="middle">TestPostRepository</text></g>
+          <g class="c-amber"><rect x="120" y="300" width="440" height="56" rx="8"/><text x="340" y="324" class="t" text-anchor="middle">reflections.getTypesAnnotatedWith(Component.class)</text><text x="340" y="343" class="ts" text-anchor="middle">메타 애노테이션까지 펼쳐서 위의 클래스들을 모두 찾아냄</text></g>
+          <line x1="130" y1="258" x2="220" y2="298" stroke="#6b7280" stroke-width="1.6" marker-end="url(#ah5)"/>
+          <line x1="340" y1="258" x2="340" y2="298" stroke="#6b7280" stroke-width="1.6" marker-end="url(#ah5)"/>
+          <text x="340" y="392" class="th" text-anchor="middle">@Component 하나만 스캔해도 @Service·@Repository 클래스가 전부 잡힌다</text>
+          <text x="340" y="414" class="ts" text-anchor="middle">그래서 1강의 switch 하드코딩이 필요 없어진다</text>
+        </svg>
+      </div>
+      <figcaption><span class="fig-tag">사이클 1</span><p><b>메타 애노테이션.</b> <code>@Service</code>는 그 자체가 <code>@Component</code>다. 그래서 하나만 스캔해도 전부 잡힌다.</p></figcaption>
+    </figure>
+
+    <figure class="plate">
+      <div class="plate-scroll">
+        <svg viewBox="0 0 680 500" role="img" xmlns="http://www.w3.org/2000/svg">
+          <title>리플렉션으로 생성자 파라미터를 읽어 재귀 조달 후 newInstance</title>
+          <defs><marker id="ah6" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#6b7280"/></marker></defs>
+          <line x1="340" y1="70" x2="340" y2="98" stroke="#6b7280" stroke-width="1.6" marker-end="url(#ah6)"/>
+          <line x1="340" y1="154" x2="340" y2="182" stroke="#6b7280" stroke-width="1.6" marker-end="url(#ah6)"/>
+          <line x1="340" y1="238" x2="340" y2="266" stroke="#6b7280" stroke-width="1.6" marker-end="url(#ah6)"/>
+          <line x1="340" y1="322" x2="340" y2="350" stroke="#6b7280" stroke-width="1.6" marker-end="url(#ah6)"/>
+          <line x1="340" y1="394" x2="340" y2="422" stroke="#6b7280" stroke-width="1.6" marker-end="url(#ah6)"/>
+          <g class="c-gray"><rect x="150" y="24" width="380" height="46" rx="8"/><text x="340" y="52" class="t" text-anchor="middle">생성자 얻기: getConstructors()[0]</text></g>
+          <g class="c-purple"><rect x="110" y="98" width="460" height="56" rx="8"/><text x="340" y="122" class="t" text-anchor="middle">파라미터 목록: getParameters()</text><text x="340" y="141" class="ts" text-anchor="middle">예: [ TestPostRepository ] — 생성자가 요구하는 재료</text></g>
+          <g class="c-blue"><rect x="110" y="182" width="460" height="56" rx="8"/><text x="340" y="206" class="t" text-anchor="middle">각 파라미터: 타입 → lcfirst → 빈 이름</text><text x="340" y="225" class="ts" text-anchor="middle">TestPostRepository → "testPostRepository"</text></g>
+          <g class="c-green"><rect x="150" y="266" width="380" height="56" rx="8"/><text x="340" y="290" class="t" text-anchor="middle">genBean("testPostRepository") 재귀 조달</text><text x="340" y="309" class="ts" text-anchor="middle">→ repo 싱글톤 획득 (없으면 만들고, 있으면 재사용)</text></g>
+          <g class="c-amber"><rect x="220" y="350" width="240" height="44" rx="8"/><text x="340" y="378" class="t" text-anchor="middle">args = [ repo ]</text></g>
+          <g class="c-blue"><rect x="120" y="422" width="440" height="46" rx="8"/><text x="340" y="450" class="t" text-anchor="middle">newInstance(args) = new TestPostService(repo)</text></g>
+          <text x="340" y="492" class="th" text-anchor="middle">생성자가 요구하는 것을 리플렉션으로 읽어 재귀로 채운다 = 자동 DI</text>
+        </svg>
+      </div>
+      <figcaption><span class="fig-tag">사이클 2</span><p><b>생성자 = 주문서.</b> 1강에서 손으로 쓰던 재귀 주입을, 이제 <code>getParameters()</code>가 읽어 자동으로 한다.</p></figcaption>
+    </figure>
+  </section>
+
+  <!-- ===================== 3강 ===================== -->
+  <section>
+    <div class="sec-head"><span class="tag">3강 · v3</span><h2>@Bean 메서드로 조립</h2></div>
+    <p class="sec-sub"><code>@Component</code>를 붙일 수 없는 <b>남의 라이브러리</b> 객체(ObjectMapper 등)를, 설정 클래스의 <code>@Bean</code> 메서드가 대신 만들어 등록한다.</p>
+
+    <figure class="plate">
+      <div class="plate-scroll">
+        <svg viewBox="0 0 680 440" role="img" xmlns="http://www.w3.org/2000/svg">
+          <title>genBean은 두 갈래로 빈을 만든다: @Bean 메서드 또는 @Component 생성자</title>
+          <defs><marker id="ah7" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#6b7280"/></marker></defs>
+          <g class="c-gray"><rect x="220" y="24" width="240" height="52" rx="8"/><text x="340" y="47" class="t" text-anchor="middle">genBean("이름")</text><text x="340" y="65" class="ts" text-anchor="middle">이 이름, 어떻게 만들지?</text></g>
+          <line x1="300" y1="76" x2="180" y2="122" stroke="#6b7280" stroke-width="1.6" marker-end="url(#ah7)"/>
+          <line x1="380" y1="76" x2="500" y2="122" stroke="#6b7280" stroke-width="1.6" marker-end="url(#ah7)"/>
+          <text x="200" y="104" class="ts" text-anchor="middle">beanMethods에 있음</text>
+          <text x="505" y="104" class="ts" text-anchor="middle">beanClasses에 있음</text>
+          <g class="c-purple"><rect x="30" y="124" width="300" height="56" rx="8"/><text x="180" y="148" class="t" text-anchor="middle">@Bean 메서드 (3강 신규)</text><text x="180" y="166" class="ts" text-anchor="middle">설정 객체의 메서드를 invoke</text></g>
+          <line x1="180" y1="180" x2="180" y2="216" stroke="#6b7280" stroke-width="1.6" marker-end="url(#ah7)"/>
+          <g class="c-purple"><rect x="20" y="218" width="320" height="70" rx="8"/><text x="180" y="242" class="t" text-anchor="middle">1) 설정 빈 조달 genBean(config)</text><text x="180" y="261" class="ts" text-anchor="middle">2) 메서드 파라미터를 이름으로 재귀 조달</text><text x="180" y="279" class="ts" text-anchor="middle">3) method.invoke(config, args)</text></g>
+          <g class="c-green"><rect x="350" y="124" width="300" height="56" rx="8"/><text x="500" y="148" class="t" text-anchor="middle">@Component 클래스 (2강)</text><text x="500" y="166" class="ts" text-anchor="middle">생성자를 newInstance</text></g>
+          <line x1="500" y1="180" x2="500" y2="216" stroke="#6b7280" stroke-width="1.6" marker-end="url(#ah7)"/>
+          <g class="c-green"><rect x="360" y="218" width="300" height="70" rx="8"/><text x="510" y="242" class="t" text-anchor="middle">1) 생성자 파라미터를 타입으로</text><text x="510" y="261" class="ts" text-anchor="middle">2) 각 재료 재귀 조달</text><text x="510" y="279" class="ts" text-anchor="middle">3) constructor.newInstance(args)</text></g>
+          <line x1="180" y1="288" x2="320" y2="340" stroke="#6b7280" stroke-width="1.6" marker-end="url(#ah7)"/>
+          <line x1="500" y1="288" x2="360" y2="340" stroke="#6b7280" stroke-width="1.6" marker-end="url(#ah7)"/>
+          <g class="c-amber"><rect x="220" y="342" width="240" height="50" rx="8"/><text x="340" y="365" class="t" text-anchor="middle">beans에 저장 후 반환</text><text x="340" y="383" class="ts" text-anchor="middle">싱글톤 (1·2강과 동일)</text></g>
+          <text x="340" y="422" class="th" text-anchor="middle">빈 만드는 길이 둘로 갈라지고, 저장·재사용은 똑같이 합쳐진다</text>
+        </svg>
+      </div>
+      <figcaption><span class="fig-tag">사이클 1</span><p><b>두 갈래.</b> 이름이 메서드면 <code>invoke</code>, 클래스면 <code>newInstance</code>. 저장·재사용은 하나로 합쳐진다.</p></figcaption>
+    </figure>
+
+    <figure class="plate">
+      <div class="plate-scroll">
+        <svg viewBox="0 0 680 430" role="img" xmlns="http://www.w3.org/2000/svg">
+          <title>@Bean 메서드 파라미터는 타입이 아니라 이름으로 조달해야 한다</title>
+          <defs><marker id="ah8" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#6b7280"/></marker></defs>
+          <g class="c-gray"><rect x="90" y="24" width="500" height="52" rx="8"/><text x="340" y="48" class="t" text-anchor="middle">파라미터: (JavaTimeModule testBaseJavaTimeModule)</text><text x="340" y="66" class="ts" text-anchor="middle">타입 = JavaTimeModule · 이름 = testBaseJavaTimeModule</text></g>
+          <line x1="250" y1="76" x2="170" y2="120" stroke="#6b7280" stroke-width="1.6" marker-end="url(#ah8)"/>
+          <line x1="430" y1="76" x2="510" y2="120" stroke="#6b7280" stroke-width="1.6" marker-end="url(#ah8)"/>
+          <g class="c-red"><rect x="30" y="122" width="290" height="52" rx="8"/><text x="175" y="146" class="t" text-anchor="middle">타입으로 lcfirst (2강 방식)</text><text x="175" y="164" class="ts" text-anchor="middle">JavaTimeModule → "javaTimeModule"</text></g>
+          <line x1="175" y1="174" x2="175" y2="210" stroke="#6b7280" stroke-width="1.6" marker-end="url(#ah8)"/>
+          <g class="c-red"><rect x="30" y="212" width="290" height="56" rx="8"/><text x="175" y="236" class="t" text-anchor="middle">genBean("javaTimeModule")</text><text x="175" y="255" class="ts" text-anchor="middle">그런 이름의 빈 없음 → null ✗</text></g>
+          <g class="c-green"><rect x="360" y="122" width="290" height="52" rx="8"/><text x="505" y="146" class="t" text-anchor="middle">파라미터 이름으로 (3강)</text><text x="505" y="164" class="ts" text-anchor="middle">parameters[i].getName()</text></g>
+          <line x1="505" y1="174" x2="505" y2="210" stroke="#6b7280" stroke-width="1.6" marker-end="url(#ah8)"/>
+          <g class="c-green"><rect x="360" y="212" width="290" height="56" rx="8"/><text x="505" y="236" class="t" text-anchor="middle">genBean("testBaseJavaTimeModule")</text><text x="505" y="255" class="ts" text-anchor="middle">등록된 이름과 일치 → 빈 획득 ✓</text></g>
+          <g class="c-amber"><rect x="360" y="300" width="290" height="46" rx="8"/><text x="505" y="328" class="t" text-anchor="middle">invoke(config, [module]) → ObjectMapper</text></g>
+          <line x1="505" y1="268" x2="505" y2="298" stroke="#6b7280" stroke-width="1.6" marker-end="url(#ah8)"/>
+          <text x="340" y="380" class="th" text-anchor="middle">@Bean 이름 규칙 = 메서드 이름. 그래서 파라미터도 "이름"으로 찾아야 맞다</text>
+          <text x="340" y="404" class="ts" text-anchor="middle">이름을 읽으려면 build.gradle의 -parameters 옵션 필요</text>
+        </svg>
+      </div>
+      <figcaption><span class="fig-tag">사이클 2</span><p><b>이름 vs 타입.</b> @Bean 빈은 메서드 이름으로 등록되므로, 파라미터도 타입이 아닌 이름으로 찾아야 맞다.</p></figcaption>
+    </figure>
+  </section>
+
+  <!-- ===================== 실전 코드맵 ===================== -->
+  <section>
+    <div class="sec-head"><span class="tag">실전 · 종합</span><h2>실제 앱은 이렇게 엮인다</h2></div>
+    <p class="sec-sub">우리가 만든 <code>genBean</code> 하나가 실제 앱 전체를 조립한다. 화살표는 <b>“주입됨”</b>, 라벨은 그 주입을 담당하는 우리 코드의 로직이다. (<code>@Controller</code>는 <code>@Service</code>처럼 <code>@Component</code> 메타 애노테이션 하나만 추가하면 그대로 스캔된다는 전제.)</p>
+
+    <figure class="plate">
+      <div class="plate-scroll">
+        <svg viewBox="0 0 700 560" role="img" xmlns="http://www.w3.org/2000/svg">
+          <title>우리 컨테이너가 실제 앱의 Controller·Service·Repository·외부 라이브러리를 주입으로 조립하는 코드맵</title>
+          <desc>PostRepository와 ObjectMapper가 PostService에 생성자로 주입되고, PostService가 PostController에 주입된다. ObjectMapper는 @Configuration의 @Bean 메서드로 만들어지며 JavaTimeModule을 파라미터 이름으로 주입받는다.</desc>
+          <defs><marker id="cm" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7.5" markerHeight="7.5" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#6b7280"/></marker></defs>
+          <line x1="150" y1="430" x2="150" y2="312" stroke="#6b7280" stroke-width="1.7" marker-end="url(#cm)"/>
+          <line x1="160" y1="208" x2="160" y2="106" stroke="#6b7280" stroke-width="1.7" marker-end="url(#cm)"/>
+          <path d="M400,318 C360,318 360,278 362,272" fill="none" stroke="#6b7280" stroke-width="1.7" marker-end="url(#cm)"/>
+          <line x1="470" y1="224" x2="470" y2="286" stroke="#6b7280" stroke-width="1.7" marker-end="url(#cm)"/>
+          <text x="158" y="374" class="ts" text-anchor="start">생성자 주입 · 타입</text>
+          <text x="168" y="162" class="ts" text-anchor="start">생성자 주입 · 타입</text>
+          <text x="330" y="300" class="ts" text-anchor="end">@Bean · 타입</text>
+          <text x="478" y="262" class="ts" text-anchor="start">@Bean 파라미터 · 이름</text>
+          <rect class="cardbg" x="30" y="26" width="300" height="80" rx="10"/>
+          <g class="c-blue"><rect x="44" y="38" width="112" height="24" rx="6"/><text x="100" y="55" class="ts" text-anchor="middle">@Controller</text></g>
+          <text x="48" y="90" class="code"><tspan class="kw">class </tspan>PostController(PostService)</text>
+          <rect class="cardbg" x="30" y="210" width="330" height="102" rx="10"/>
+          <g class="c-green"><rect x="44" y="222" width="92" height="24" rx="6"/><text x="90" y="239" class="ts" text-anchor="middle">@Service</text></g>
+          <text x="48" y="270" class="code"><tspan class="kw">class </tspan>PostService(</text>
+          <text x="66" y="292" class="code">PostRepository, ObjectMapper)</text>
+          <rect class="cardbg" x="30" y="430" width="280" height="80" rx="10"/>
+          <g class="c-amber"><rect x="44" y="442" width="116" height="24" rx="6"/><text x="102" y="459" class="ts" text-anchor="middle">@Repository</text></g>
+          <text x="48" y="492" class="code"><tspan class="kw">class </tspan>PostRepository()</text>
+          <text x="400" y="150" class="ts" text-anchor="start">@Configuration · AppConfig (외부 라이브러리 조립)</text>
+          <rect class="cardbg" x="400" y="162" width="288" height="62" rx="10"/>
+          <g class="c-purple"><rect x="414" y="174" width="60" height="22" rx="6"/><text x="444" y="190" class="ts" text-anchor="middle">@Bean</text></g>
+          <text x="416" y="216" class="code">JavaTimeModule javaTimeModule()</text>
+          <rect class="cardbg" x="400" y="286" width="288" height="86" rx="10"/>
+          <g class="c-purple"><rect x="414" y="298" width="60" height="22" rx="6"/><text x="444" y="314" class="ts" text-anchor="middle">@Bean</text></g>
+          <text x="416" y="340" class="code">ObjectMapper objectMapper(</text>
+          <text x="434" y="360" class="code">JavaTimeModule javaTimeModule)</text>
+          <line x1="30" y1="524" x2="688" y2="524" class="legln"/>
+          <text x="30" y="547" class="ts" text-anchor="start">타입 = 파라미터 "타입"으로 조달 (@Component 생성자)   ·   이름 = 파라미터 "이름"으로 조달 (@Bean 메서드)</text>
+        </svg>
+      </div>
+      <figcaption><span class="fig-tag">코드맵</span><p><b>모든 것의 종합.</b> 싱글톤 · 재귀 조립 · 타입주입(@Component) ↔ 이름주입(@Bean) · 외부 라이브러리 편입이 한 화면에. <code>genBean</code> 한 메서드의 성과다.</p></figcaption>
+    </figure>
+  </section>
+
+  <footer>스프링 IoC 컨테이너 클론 · 1–3강 완주 · 2026</footer>
+</div>
+</body>
+</html>
