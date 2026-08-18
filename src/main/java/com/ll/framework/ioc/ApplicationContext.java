@@ -4,8 +4,8 @@ import com.ll.framework.ioc.annotations.Component;
 import com.ll.standard.util.Ut;
 import org.reflections.Reflections;
 
-import java.lang.reflect.Constructor;   // 추가
-import java.lang.reflect.Parameter;     // 추가
+import java.lang.reflect.Constructor;
+import java.lang.reflect.Parameter;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
@@ -24,9 +24,9 @@ public class ApplicationContext {
         Set<Class<?>> componentClasses = reflections.getTypesAnnotatedWith(Component.class);
 
         for (Class<?> cls : componentClasses) {
-            if (cls.isInterface() || cls.isAnnotation()) continue;
+            if (cls.isInterface() || cls.isAnnotation()) continue;   // 애노테이션 자신은 제외
             String beanName = Ut.str.lcfirst(cls.getSimpleName());
-            beanClasses.put(beanName, cls);
+            beanClasses.put(beanName, cls);                          // 이름 → 클래스 등록
         }
     }
 
