@@ -52,7 +52,14 @@ public class ApplicationContext {
             if (beanMethods.containsKey(beanName)) {                  // 갈래 A: @Bean 메서드
                 Method method = beanMethods.get(beanName);
                 Object configInstance = genBean(Ut.str.lcfirst(method.getDeclaringClass().getSimpleName()));
-                bean = method.invoke(configInstance);                 // 아직 인자 없이 (사이클1)
+
+                Parameter[] parameters = method.getParameters();
+                Object[] args = new Object[parameters.length];
+                for (int i = 0; i < parameters.length; i++) {
+                    args[i] = genBean(parameters[i].getName());       // 타입 아닌 "이름"으로 조달
+                }
+
+                bean = method.invoke(configInstance, args);           // 인자 넣어 메서드 실행
             } else {                                                  // 갈래 B: @Component 클래스 (2강)
                 Class<?> cls = beanClasses.get(beanName);
                 if (cls == null) return null;
