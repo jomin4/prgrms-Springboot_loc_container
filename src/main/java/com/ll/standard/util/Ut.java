@@ -1,4 +1,4 @@
-package com.ll.util;
+package com.ll.standard.util;
 
 public class Ut {
     public static class str {
